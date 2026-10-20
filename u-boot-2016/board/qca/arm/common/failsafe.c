@@ -741,8 +741,12 @@ static int failsafe_write_firmware(ulong data_addr, ulong data_size)
 		ADD_CMD_TO_LIST("flasherase rootfs_data");
 #endif
 
+#ifndef CONFIG_TARGET_IPQ5018_LYW_30M
+	/* LYW-30M boots a single UBI using lyw_boot. Its preserved OEM
+	 * BOOTCONFIG is not part of firmware installation or slot selection. */
 	if (validate_bootconfig())
 		ADD_CMD_TO_LIST("bootconfig set firmware 0");
+#endif
 
 	return failsafe_run_command_list();
 }
