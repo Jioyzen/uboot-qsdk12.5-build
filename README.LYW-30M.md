@@ -1,49 +1,74 @@
 # LYW-30M 专用恢复 U-Boot
 
-系统固件独立维护于 [Jioyzen/openwrt-nss-edma](https://github.com/Jioyzen/openwrt-nss-edma/tree/lyw-30m-nss125-validation)。本仓库只维护引导程序。
+系统源码独立维护于 [Jioyzen/openwrt-nss-edma](https://github.com/Jioyzen/openwrt-nss-edma/tree/lyw-30m-nss125-validation)。本仓库只维护引导程序。
 
-## 来源
+## 当前实测状态（2026-10-20）
 
-- 上游：[chenxin527/uboot-qsdk12.5-build](https://github.com/chenxin527/uboot-qsdk12.5-build)。仓库同时包含构建脚本和 `u-boot-2016/` 源码，不只是下载器。
-- 固定上游基线：`9ce315735ac88fd0a7c7697bc527a8616ed0a972`。
-- LYW-30M 开发分支：`lyw-30m-recovery`。
-- 当前设备已安装版本：`8bcf93b41dd79760f907d47a7df9d399ee3ee17d`，U-Boot 2016.01。
-- 已安装镜像大小：655360 字节，SHA256：`b14b935654e7332abc2af677fcceddf54cf915670b7ddab022769afe47a4684d`。
+已在本机跑通：干净原厂系统的隐藏Web管理页开启SSH → 原厂SSH写主APPSBL → 专用不死U-Boot恢复Web → 用户Web刷专用factory UBI → OpenWrt NAND23正常启动。此次SSH开启没有使用TTL；TTL用于恢复准备和被动记录。
 
-本分支后续提交补充维护说明，并修正 Web 自更新中的备用 APPSBL 判断：LYW-30M 不将新镜像同步写入 `0:APPSBL_1`，保留现存备用副本；其他板型保持上游行为。LYW-30M 的 Web 系统刷写入口也已取消通用 `bootconfig set firmware 0` 操作：本机单系统使用 `lyw_boot`，刷系统不应改动或同步原厂 BOOTCONFIG。这些源码修正尚未重新刷入设备。当前安装版本在本机有备用分区时会跳过备用写入，但原判断错误地在分区不存在时尝试写入，不能推广到其他分区布局。
+已验证运行镜像：`uboot-ipq50xx-lyw_30m-261020_185707_f687f0a-dirty.bin`，655360字节；启动版本 `U-Boot 2016.01-f687f0a-dirty (2026-10-20 18:57:10 +0800)`，SHA256 `5e37b3faa67c816971b2f60400ef0849b3a59f8893e743b87eecfcb6bd071643`。对应功能源码已整理为提交 `d7daf9fc276b0f910b65ccff168fa3c64dbe7363`，尚未推送；二进制在提交前构建，保留实际f687f0a-dirty版本字符串。源码文件校验值和实测清单见 `builds/lyw-30m-stock-web-20261020.json`。
 
-## 硬件及布局
+上游为 [chenxin527/uboot-qsdk12.5-build](https://github.com/chenxin527/uboot-qsdk12.5-build)，固定基线 `9ce315735ac88fd0a7c7697bc527a8616ed0a972`；本地维护分支 `lyw-30m-recovery`。源码包含构建脚本及完整 `u-boot-2016/`，不是只有下载器。
 
-- LYW-30M / AX3000_Q06_V2.0_0223，IPQ5018 MP03.3，board ID `0x8040002`。
-- Winbond W25N01GW，128MiB NAND，2048 字节页、64 字节 OOB、ECC4。
-- reset GPIO27，WPS GPIO38，红灯 GPIO23，绿灯 GPIO28。
-- 恢复 Web：已验证外壳 LAN3，默认 `192.168.1.1`。其他网口未逐个验收。
-- 单系统 UBI：起点 `0x00900000`，长度 `0x07700000`（119MiB）。引导链、ART 等不属于该区域。
-- 默认启动：读取 UBI 的 `kernel` 卷，以 `config@mp03.3` 启动；Linux 使用 `rootfs` 的 squashfs/ubiblock 和可写数据卷。
+## 硬件与布局
 
-## 编译
+- LYW-30M / AX3000_Q06_V2.0_0223，IPQ5018 MP03.3，board ID `0x8040002`，256MiB RAM。
+- Winbond W25N01GW，128MiB NAND，2048字节页、64字节OOB、ECC4。
+- Reset GPIO27、WPS GPIO38、红灯GPIO23、绿灯GPIO28。
+- LAN3恢复Web已验证，默认 `192.168.1.1`；其他恢复网口未逐个验收。
+- 原厂MIBIB、SBL1、ART及其他保护区保持原有区间。原厂已预留主/备用APPSBL，各1.25MiB；本机原始及当前APPSBL_1全0xff，没有可用备用引导程序。全区CRC32 `5f3b230d` 是空区的CRC，早期记录曾误称原厂备用程序，现已纠正。不能依赖备用区自动回退。
+- OpenWrt单系统UBI：0x00900000起，长度0x07700000（119MiB）。原厂MIBIB未改，由lyw_mtd和Linux板级DTS使用单系统布局。
+- NAND23运行时是16个物理MTD：前15个9MiB保护区Linux只读；mtd15/rootfs119MiB可写。UBI卷kernel32LEB、rootfs75LEB、rootfs_data821LEB（自动扩展），初始可写空间约85MiB。
+
+## 编译及回归
+
+在本地维护工作区执行：
 
 ```sh
-git clone --branch lyw-30m-recovery --single-branch https://github.com/Jioyzen/uboot-qsdk12.5-build.git
-cd uboot-qsdk12.5-build
 ./build.sh check_deps
 ./build.sh build lyw_30m
 ```
 
-按上游说明安装缺少的依赖。脚本使用 `staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/` 的 ARM32 工具链，目标 defconfig 为 `ipq5018_lyw_30m_defconfig`；输出位于 `bin/<版本>/`。固件系统本身的 AArch64 工具链不能直接替代这里的 ARM32 工具链。时间戳和 Git 描述会影响镜像哈希。保留上游脚本的串行 make：直接并行构建会触发 combined DTB 生成/链接竞态，本次检查也复现了该问题。
+工具链为ARM32 `staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_musl-1.1.16_eabi/`，defconfig为 `ipq5018_lyw_30m_defconfig`。系统固件的AArch64工具链不能直接替代。输出在 `bin/<版本>/`；时间戳/Git描述影响二进制哈希。保留上游脚本串行make，直接并行曾触发combined DTB生成/链接竞态。
 
-## 支持的镜像与测试范围
+实际C校验函数的主机回归：
 
-Web 的固件入口面向**本机单系统布局的 UBI factory 镜像**，不是所有高通 AX3000 固件的通用刷机入口。当前 NAND Web 刷写器不支持 OpenWrt sysupgrade tar；系统内升级请使用系统仓库的专用 sysupgrade。原厂升级包和其他机型镜像没有兼容性承诺。
+```sh
+python3 tests/lyw-factory-validator-host.py /path/to/lyw-factory.ubi
+```
 
-目前 UBI 上传校验只检查格式标志与尺寸，不能证明内部 kernel、rootfs、板型、ECC 和布局正确。测试过的较大文件上传仅证明接收和尺寸检查，不等于实际刷写或启动验证。完整 factory UBI 的 Web 擦写/恢复验收仍待完成。
+需主机C编译器、zlib及libfdt.so.1，不访问路由器。当前9项用例覆盖256MiB HTTP真实地址、另一加载地址、EC/VID CRC、卷表、错误板型、缺少NAND标志、截断及缺失kernel LEB。
 
-已完成：RAM 链式启动、NAND 安装后 Linux 启动、LAN3 HTTP、默认环境在 RAM 中恢复后的启动、Web U-Boot 自更新及备用 APPSBL 保留检查。这些重启主要为软件 reset；物理断电冷启动及按住 reset 上电进入 Web 尚未完成独立验收。
+## 支持的系统镜像
 
-TTL 下可执行 `httpd`；上游还提供 failsafe 环境变量和 GPIO 按键入口。本机默认 `lyw_boot` 脚本尚无启动失败自动转入 HTTP 的兜底，不能宣称任何损坏都能自动恢复。“不死”仅指恢复功能，不代表覆盖引导链后仍可恢复。
+“固件更新”用于本机单系统布局的 **factory UBI**。本轮验证文件 `lyw-nss618-nand23-defaults-squashfs-factory.ubi`，14286848字节，SHA256 `66c1a308a1ed99ad901e1cb6e78606de4b76970164265da727ba76718687213b`。它不是其他高通AX3000设备的通用刷机入口；不能直接用官方未适配本机的镜像。Web NAND刷写器不支持sysupgrade tar，系统内升级使用本机专用sysupgrade。
 
-## 原厂机器安装
+验证器检查UBI EC/VID/卷表CRC、2048/4096几何、kernel/rootfs/rootfs_data卷结构与容量、config@mp03.3及本机NAND DTB标志；上传和实际擦写前均验证。异常响应包含reason。并非所有可能的损坏形式都已穷尽测试。
 
-原厂 SSH root 可以作为读取、备份和写入分区的操作通道，但不代表任意原厂 LYW-30M 都已通过完整免 TTL 安装验证。安装前必须逐台确认板型、NAND/ECC、MIBIB、APPSBL 及备用分区、启动环境、镜像尺寸和恢复路径。当前仓库不提供未经验证的一键原厂转换脚本，也不将备用 APPSBL 的存在等同于必然自动回退。
+首次原厂安装时，只有factory写入成功后才保存lyw_mtd、lyw_args、lyw_boot和bootcmd=run lyw_boot，不依赖开发机预先设置启动脚本。身份相关环境字段保留，不同步/修改BOOTCONFIG。Web更新U-Boot只写主APPSBL，不写APPSBL_1。
 
-维护时先 RAM chainload，再验证读 NAND、HTTP、Linux 启动、备用引导副本及物理按键；完成这些验证后再发布对应二进制。系统升级不应顺带更新 U-Boot。
+18:15候选曾把0x41000000误设为FIT工作区，与256MiB设备HTTP上传区重叠，正常factory被安全拒绝、没有擦除。18:57候选改为平台检查允许的HLOS高端工作区，保留64KiB边界保护和输入重叠检查；未扩大malloc池或关闭板型检查。
+
+## 已完成与待验收
+
+本轮已完成：
+
+- 原厂隐藏 `/itms/set/telnet` GET/错误密码拒绝/正确user密码开启SSH、root登录及重启后持久性。
+- 原厂SSH写主APPSBL、整个1.25MiB读回一致；其他14个保护区未变。
+- Web U-Boot自更新、主分区读回、13个保护区不变，环境仅有意设置一次性Web；软件重启后LAN3千兆Web正常。
+- 真实HTTP上传损坏CRC、错误板型被拒；正常factory接受；上传测试前后119MiB系统区散列一致。
+- 用户实际Web factory擦写、自动环境迁移、NAND Linux6.18.55启动。kernel/rootfs整个预留卷与factory字节一致；13个保护区未变，ART及本机BDF校验通过；环境CRC有效，仅4个启动键改变。
+- NAND952个好PEB、0坏块/损坏块，完整读取后ECC失败和纠正计数均0。双CPU、qca8k/DSA、双频AP及NSS12.5/16MiB初始化正常。
+
+仍待独立验收：物理按住Reset上电进入Web、真正断电后的正常启动、新安装配置下的双频长期负载及WAN/NAT/PPPoE实测。软件reset不能称为断电冷启动。NAND23尚有PSCI电源协调与ath11k额外QMI请求的兼容提示；首次启动、WAN未接等日志已另作分类，不能宣称零警告或已完成长期稳定性验证。
+
+TTL可执行httpd；也已验证failsafe一次性环境进入Web。默认lyw_boot当前没有Linux启动失败自动转入HTTP的完整兜底。恢复Web依赖完整引导链，不能恢复被破坏的SBL1/MIBIB/ART；“不死”不等于任何故障自动恢复。
+
+其他同型号机器仍必须逐台核对板号、NAND/ECC、MIBIB区间、主APPSBL实际启动选择、环境及目标容量。从分区名称定位mtd设备，再核对区间；不照抄本机mtd编号、不刷本机原始保护区备份到另一台。当前不发布未经跨机验证的一键转换脚本，系统升级也不应顺带更新U-Boot。
+
+## 安装与验收文档
+
+- [原厂Web开启SSH和安装步骤](docs/lyw-30m-stock-install.zh-CN.md)
+- [Web刷写、分区、启动环境和驱动验收](docs/lyw-30m-validation.zh-CN.md)
+
+用户已确认当前系统稳定、初始化和参数正常。上述文档保留尚无独立日志记录的物理按键及断电测试边界；这不影响提交已验证的源码修复。仓库不包含单台设备的密码、密钥、ART/BDF及完整NAND备份。
