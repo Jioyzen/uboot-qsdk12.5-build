@@ -1,0 +1,73 @@
+/*
+ * LYW-30M / AX3000_Q06_V2.0 recovery U-Boot board description.
+ *
+ * The OEM boot chain reports IPQ5018 MP03.3 and board ID 0x8040002.
+ * Keep those identifiers unchanged so the installed SBL continues to
+ * select this image and the existing config@mp03.3 FIT remains bootable.
+ */
+#include "ipq5018-mp03.3.dts"
+
+/ {
+	host_name = "Lingyan LYW-30M";
+	model = "Lingyan LYW-30M recovery";
+	compatible = "qca,ipq5018", "qca,ipq5018-mp03.3";
+	machid = <0x8040002>;
+	config_name = "config@mp03.3";
+
+	/* The OEM MP03.3 DTB configures only the two QUP SPI BAM pipes. */
+	spi {
+		/delete-property/ wr_pipe_1;
+		/delete-property/ rd_pipe_1;
+		/delete-property/ wr_pipe_2;
+		/delete-property/ rd_pipe_2;
+	};
+
+	keys {
+		compatible = "gpio-keys";
+
+		reset {
+			gpio = <27>;
+			func = <0>;
+			pull = <GPIO_PULL_UP>;
+			drvstr = <GPIO_8MA>;
+			oe = <GPIO_OE_DISABLE>;
+			active_level = <GPIO_ACTIVE_LOW>;
+		};
+
+		wps {
+			gpio = <38>;
+			func = <0>;
+			pull = <GPIO_PULL_UP>;
+			drvstr = <GPIO_8MA>;
+			oe = <GPIO_OE_DISABLE>;
+			active_level = <GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led_red {
+			label = "power_led";
+			gpio = <23>;
+			func = <0>;
+			out = <GPIO_OUT_LOW>;
+			pull = <GPIO_NO_PULL>;
+			drvstr = <GPIO_8MA>;
+			oe = <GPIO_OE_ENABLE>;
+			active_level = <GPIO_ACTIVE_HIGH>;
+		};
+
+		led_green {
+			label = "blink_led", "system_led";
+			gpio = <28>;
+			func = <0>;
+			out = <GPIO_OUT_LOW>;
+			pull = <GPIO_NO_PULL>;
+			drvstr = <GPIO_8MA>;
+			oe = <GPIO_OE_ENABLE>;
+			active_level = <GPIO_ACTIVE_HIGH>;
+		};
+	};
+
+};

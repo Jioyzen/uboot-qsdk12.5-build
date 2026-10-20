@@ -274,7 +274,9 @@ void do_network_check(void)
 		printf("    ipaddr: %s\n", default_ipaddr);
 		printf("    netmask: %s\n", default_netmask);
 		printf("    serverip: %s\n", default_serverip);
+#ifndef CONFIG_TARGET_IPQ5018_LYW_30M
 		saveenv();
+#endif
 	}
 }
 

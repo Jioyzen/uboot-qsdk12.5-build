@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o pipefail
 
 # ============================================
 # IPQ 平台 U-Boot 构建脚本
@@ -67,6 +68,7 @@ DEVICE_LIST=(
     "ipq50xx:cmcc_mr3000d-ci:ipq5018_cmcc_mr3000d_ci:CMCC MR3000D-CI"
     "ipq50xx:cmcc_pz-l8:ipq5018_cmcc_pz_l8:CMCC PZ-L8"
     "ipq50xx:cmcc_rax3000q:ipq5018_cmcc_rax3000q:CMCC RAX3000Q(Y)"
+    "ipq50xx:lyw_30m:ipq5018_lyw_30m:Lingyan LYW-30M recovery"
     "ipq50xx:cucc_vs010:ipq5018_cucc_vs010:CUCC VS010"
     "ipq50xx:jdcloud_ax3000:ipq5018_jdcloud_ax3000:JDCloud AX3000"
     "ipq53xx:jdcloud_re-cs-06:ipq5332_jdcloud_re_cs_06:JDCloud BE6500"

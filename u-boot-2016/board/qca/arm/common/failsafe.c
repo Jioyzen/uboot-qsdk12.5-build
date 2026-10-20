@@ -46,6 +46,13 @@ extern struct sdhci_host mmc_host;
 #define MAX_CMD_LEN         255
 #define MAX_CMD_BUF_SIZE    (MAX_CMD_LEN + 1)
 
+#ifdef CONFIG_TARGET_IPQ5018_LYW_30M
+/* The LYW-30M uses one UBI covering the original rootfs, rootfs_1 and
+ * plugins areas. The OEM MIBIB still describes the old split layout. */
+#define LYW_UBI_OFFSET      0x00900000
+#define LYW_UBI_SIZE        0x07700000
+#endif
+
 static struct cmd_list {
 	char list[MAX_CMD_COUNT][MAX_CMD_BUF_SIZE];
 	int count;
@@ -538,7 +545,16 @@ static int failsafe_validate_firmware(const void *data_addr, ulong data_size)
         break;
     case FW_TYPE_UBI:
         RETURN_IF_NAND_FLASH_NOT_FOUND;
+#ifdef CONFIG_TARGET_IPQ5018_LYW_30M
+        if ((uint32_t)data_size > LYW_UBI_SIZE) {
+            handle_file_too_big("LYW-30M single UBI", data_size,
+                    "rootfs", LYW_UBI_SIZE);
+            return RET_FILE_TOO_BIG;
+        }
+        return RET_SUCCESS;
+#else
         ret = validate_file_size("firmware", "rootfs", data_size);
+#endif
         break;
     default:
         handle_wrong_fw_type("FIRMWARE");
@@ -705,7 +721,15 @@ static int failsafe_write_firmware(ulong data_addr, ulong data_size)
 		break;
 	case FW_TYPE_UBI:
 		RETURN_IF_NAND_FLASH_NOT_FOUND;
+#ifdef CONFIG_TARGET_IPQ5018_LYW_30M
+		ADD_CMD_TO_LIST("nand device %d && nand erase 0x%x 0x%x && "
+			"nand write 0x%lx 0x%x 0x%lx",
+			CONFIG_NAND_FLASH_INFO_IDX, LYW_UBI_OFFSET, LYW_UBI_SIZE,
+			data_addr, LYW_UBI_OFFSET,
+			get_nand_writable_data_size(data_size));
+#else
 		ADD_CMD_TO_LIST("flash rootfs 0x%lx 0x%lx", data_addr, data_size);
+#endif
 		break;
 	default:
 		handle_wrong_fw_type("FIRMWARE");

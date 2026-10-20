@@ -325,6 +325,24 @@ extern loff_t board_env_size;
 #define CONFIG_BOOTARGS				"console=ttyMSM0,115200n8"
 #define QCA_ROOT_FS_PART_NAME			"rootfs"
 
+#ifdef CONFIG_TARGET_IPQ5018_LYW_30M
+/* Keep a complete boot recipe in the image as well as APPSBLENV, so a
+ * cleared environment still boots the single-UBI layout. */
+#undef CONFIG_BOOTCOMMAND
+#define CONFIG_BOOTCOMMAND			"run lyw_boot"
+#define CONFIG_EXTRA_ENV_SETTINGS \
+	"lyw_mtd=setenv mtdids nand0=nand0; " \
+	"setenv mtdparts mtdparts=nand0:0x7700000@0x900000(rootfs)\0" \
+	"lyw_args=setenv bootargs console=ttyMSM0,115200n8 " \
+	"ubi.mtd=rootfs root=/dev/ubiblock0_1 rootfstype=squashfs ro " \
+	"rootwait swiotlb=1\0" \
+	"lyw_boot=run lyw_mtd; ubi part rootfs && " \
+	"ubi read 0x44000000 kernel && run lyw_args && " \
+	"bootm 0x44000000#config@mp03.3\0" \
+	"preboot=mw.l 0x1017000 0x2c1; mw.l 0x101c000 0x2c1; " \
+	"mw.l 0x1017004 0x3; mw.l 0x101c004 0x0\0"
+#endif
+
 #define CONFIG_BOOTDELAY			3
 
 #define NUM_ALT_PARTITION			16

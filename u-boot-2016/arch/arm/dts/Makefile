@@ -161,6 +161,7 @@ dtb-$(CONFIG_TARGET_IPQ5018_CMCC_PZ_L8)        += ipq5018-cmcc_pz-l8.dtb
 dtb-$(CONFIG_TARGET_IPQ5018_CMCC_RAX3000Q)     += ipq5018-cmcc_rax3000q.dtb
 dtb-$(CONFIG_TARGET_IPQ5018_CUCC_VS010)        += ipq5018-cucc_vs010.dtb
 dtb-$(CONFIG_TARGET_IPQ5018_JDCLOUD_AX3000)    += ipq5018-jdcloud_ax3000.dtb
+dtb-$(CONFIG_TARGET_IPQ5018_LYW_30M)           += ipq5018-lyw-30m-uboot.dtb
 dtb-$(CONFIG_TARGET_IPQ5332_JDCLOUD_RE_CS_06)  += ipq5332-jdcloud_re-cs-06.dtb
 dtb-$(CONFIG_TARGET_IPQ5332_JDCLOUD_RE_CS_08)  += ipq5332-jdcloud_re-cs-08.dtb
 dtb-$(CONFIG_TARGET_IPQ5332_XIAOMI_BE3600_PRO) += ipq5332-xiaomi_be3600-pro.dtb

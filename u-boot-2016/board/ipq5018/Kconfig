@@ -91,4 +91,11 @@ config TARGET_IPQ5018_JDCLOUD_AX3000
 	default n
     help
 	  Enable support for JDCloud AX3000 board
+
+config TARGET_IPQ5018_LYW_30M
+    bool "Lingyan LYW-30M recovery board support"
+	default n
+    help
+	  Enable support for the Boardcom AX3000_Q06_V2.0 LYW-30M
+	  IPQ5018 recovery bootloader.
 endif
