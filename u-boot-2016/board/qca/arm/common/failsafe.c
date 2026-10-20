@@ -758,8 +758,10 @@ static int failsafe_write_uboot(ulong data_addr, ulong data_size)
 
 	ADD_CMD_TO_LIST("flash 0:APPSBL 0x%lx 0x%lx", data_addr, data_size);
 
-	if (part_exists("0:APPSBL_1", 0) == RET_PART_NOT_FOUND)
+#ifndef CONFIG_TARGET_IPQ5018_LYW_30M
+	if (!part_exists("0:APPSBL_1", 0))
 		ADD_CMD_TO_LIST("flash 0:APPSBL_1 0x%lx 0x%lx", data_addr, data_size);
+#endif
 
 	return failsafe_run_command_list();
 }
