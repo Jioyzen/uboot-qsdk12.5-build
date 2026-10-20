@@ -330,15 +330,21 @@ extern loff_t board_env_size;
  * cleared environment still boots the single-UBI layout. */
 #undef CONFIG_BOOTCOMMAND
 #define CONFIG_BOOTCOMMAND			"run lyw_boot"
-#define CONFIG_EXTRA_ENV_SETTINGS \
-	"lyw_mtd=setenv mtdids nand0=nand0; " \
-	"setenv mtdparts mtdparts=nand0:0x7700000@0x900000(rootfs)\0" \
-	"lyw_args=setenv bootargs console=ttyMSM0,115200n8 " \
+#define LYW_MTD_COMMAND \
+	"setenv mtdids nand0=nand0; " \
+	"setenv mtdparts mtdparts=nand0:0x7700000@0x900000(rootfs)"
+#define LYW_ARGS_COMMAND \
+	"setenv bootargs console=ttyMSM0,115200n8 " \
 	"ubi.mtd=rootfs root=/dev/ubiblock0_1 rootfstype=squashfs ro " \
-	"rootwait swiotlb=1\0" \
-	"lyw_boot=run lyw_mtd; ubi part rootfs && " \
+	"rootwait swiotlb=1"
+#define LYW_BOOT_COMMAND \
+	"run lyw_mtd; ubi part rootfs && " \
 	"ubi read 0x44000000 kernel && run lyw_args && " \
-	"bootm 0x44000000#config@mp03.3\0" \
+	"bootm 0x44000000#config@mp03.3"
+#define CONFIG_EXTRA_ENV_SETTINGS \
+	"lyw_mtd=" LYW_MTD_COMMAND "\0" \
+	"lyw_args=" LYW_ARGS_COMMAND "\0" \
+	"lyw_boot=" LYW_BOOT_COMMAND "\0" \
 	"preboot=mw.l 0x1017000 0x2c1; mw.l 0x101c000 0x2c1; " \
 	"mw.l 0x1017004 0x3; mw.l 0x101c004 0x0\0"
 #endif

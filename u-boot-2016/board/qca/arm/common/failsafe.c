@@ -31,6 +31,8 @@
 #include <u-boot/md5.h>
 #include <capture.h>
 #include <bootconfig.h>
+#include <libfdt.h>
+#include <asm/unaligned.h>
 
 #include "untar.h"
 
@@ -483,6 +485,135 @@ static int failsafe_run_command_list(void)
 // 文件验证函数
 // =============================================================================
 
+#ifdef CONFIG_TARGET_IPQ5018_LYW_30M
+#define LYW_PEB_SIZE 0x20000
+#define LYW_LEB_SIZE (LYW_PEB_SIZE - 4096)
+#define LYW_VTBL_ID 0x7fffefff
+
+static int lyw_bad_factory(const char *reason)
+{
+	printf("LYW-30M: invalid factory UBI: %s\n", reason);
+	snprintf(info, sizeof(info),
+		"{\"type\":\"invalid_factory_firmware\",\"reason\":\"%s\"}", reason);
+	return RET_WRONG_FW_TYPE;
+}
+
+/* Validate the logical UBI geometry and this board's embedded FIT before
+ * erasing anything. Use the checked HLOS area below U-Boot for scratch:
+ * on 256 MiB boards HTTP uploads themselves start at 0x41000000. */
+static int lyw_validate_factory(const void *image, ulong size)
+{
+	const u8 *data = image, *table = NULL, *first = NULL, *fdt, *prop;
+	static const char * const names[] = { "kernel", "rootfs", "rootfs_data" };
+	u8 *fit;
+	ulong off, total, copied, length, fit_size;
+	u32 volume, logical, reserved = 0, kernel_pebs = 0;
+	int i, tables = 0, cfg, node, plen;
+
+	if (size < 3 * LYW_PEB_SIZE || size % LYW_PEB_SIZE)
+		return lyw_bad_factory("unaligned or truncated image");
+	for (off = 0; off < size; off += LYW_PEB_SIZE) {
+		const u8 *ec = data + off, *vid = ec + 2048;
+		if (get_unaligned_be32(ec) != 0x55424923 || ec[4] != 1 ||
+		    get_unaligned_be32(ec + 16) != 2048 ||
+		    get_unaligned_be32(ec + 20) != 4096 ||
+		    get_unaligned_be32(ec + 60) != (crc32(0, ec, 60) ^ 0xffffffff) ||
+		    get_unaligned_be32(vid) != 0x55424921 || vid[4] != 1 ||
+		    get_unaligned_be32(vid + 60) != (crc32(0, vid, 60) ^ 0xffffffff))
+			return lyw_bad_factory("EC/VID geometry or CRC");
+		volume = get_unaligned_be32(vid + 8);
+		logical = get_unaligned_be32(vid + 12);
+		if (volume == LYW_VTBL_ID) {
+			if (logical > 1 || ++tables > 2)
+				return lyw_bad_factory("layout volume copies");
+			if (table && memcmp(table, ec + 4096, 128 * 172))
+				return lyw_bad_factory("inconsistent volume tables");
+			table = ec + 4096;
+		} else if (volume > 2) {
+			return lyw_bad_factory("unexpected user volume");
+		} else if (volume == 0 && logical == 0) {
+			if (first)
+				return lyw_bad_factory("duplicate kernel first block");
+			first = ec + 4096;
+		}
+	}
+	if (tables != 2 || !table || !first)
+		return lyw_bad_factory("missing volume table or kernel");
+	for (i = 0; i < 128; i++) {
+		const u8 *record = table + i * 172;
+		u32 count = get_unaligned_be32(record);
+		if (get_unaligned_be32(record + 168) != (crc32(0, record, 168) ^ 0xffffffff))
+			return lyw_bad_factory("volume table CRC");
+		if (i >= 3) {
+			if (count)
+				return lyw_bad_factory("extra volume reservation");
+			continue;
+		}
+		if (!count || count > LYW_UBI_SIZE / LYW_PEB_SIZE ||
+		    record[12] != 1 || get_unaligned_be32(record + 4) != 1 ||
+		    get_unaligned_be16(record + 14) != strlen(names[i]) ||
+		    memcmp(record + 16, names[i], strlen(names[i])))
+			return lyw_bad_factory("expected kernel/rootfs/rootfs_data volumes");
+		reserved += count;
+		if (i == 0)
+			kernel_pebs = count;
+		if (i == 2 && !(record[144] & 1))
+			return lyw_bad_factory("rootfs_data must autoresize");
+	}
+	if (reserved + 24 > LYW_UBI_SIZE / LYW_PEB_SIZE)
+		return lyw_bad_factory("insufficient NAND reserve");
+	if (fdt_check_header(first))
+		return lyw_bad_factory("kernel is not a FIT");
+	fit_size = fdt_totalsize(first);
+	if (fit_size < 40 || fit_size > SZ_16M ||
+	    fit_size > kernel_pebs * LYW_LEB_SIZE)
+		return lyw_bad_factory("FIT size");
+	/* Keep a guard below the FDT/code/stack boundary, then check both the
+	 * platform memory map and the actual uploaded image. No heap expansion
+	 * or upload-buffer relocation is needed for a multi-MiB FIT. */
+	fit = (u8 *)(CONFIG_IPQ_FDT_HIGH - SZ_64K - ALIGN(fit_size, SZ_4K));
+	if (!is_memory_region_available((ulong)fit, fit_size) ||
+	    ((ulong)data < (ulong)fit + fit_size &&
+	     (ulong)data + size > (ulong)fit))
+		return lyw_bad_factory("no non-overlapping FIT workspace");
+	for (copied = 0, logical = 0; copied < fit_size; logical++) {
+		const u8 *found = NULL;
+		for (off = 0; off < size; off += LYW_PEB_SIZE) {
+			const u8 *vid = data + off + 2048;
+			if (get_unaligned_be32(vid + 8) != 0 ||
+			    get_unaligned_be32(vid + 12) != logical)
+				continue;
+			if (found)
+				return lyw_bad_factory("duplicate kernel LEB");
+			found = data + off + 4096;
+		}
+		if (!found)
+			return lyw_bad_factory("missing kernel LEB");
+		length = min((ulong)LYW_LEB_SIZE, fit_size - copied);
+		memcpy(fit + copied, found, length);
+		copied += length;
+	}
+	cfg = fdt_path_offset(fit, "/configurations/config@mp03.3");
+	if (cfg < 0)
+		return lyw_bad_factory("missing config@mp03.3");
+	prop = fdt_getprop(fit, cfg, "fdt", &plen);
+	if (!prop || plen < 2 || !memchr(prop, 0, plen))
+		return lyw_bad_factory("missing FIT device tree reference");
+	node = fdt_path_offset(fit, "/images");
+	node = node < 0 ? node : fdt_subnode_offset(fit, node, (const char *)prop);
+	fdt = node < 0 ? NULL : fdt_getprop(fit, node, "data", &plen);
+	if (!fdt || plen < 40 || fdt_check_header(fdt) || fdt_totalsize(fdt) > plen ||
+	    fdt_node_check_compatible(fdt, 0, "lingyan,lyw-30m"))
+		return lyw_bad_factory("device tree is not LYW-30M");
+	/* A RAM profile or a different NAND layout must not be installed. */
+	if (!fdt_getprop(fdt, fdt_path_offset(fdt, "/chosen"), "lingyan,nand-writable", NULL))
+		return lyw_bad_factory("not the single-system NAND profile");
+	total = fit_size;
+	printf("LYW-30M: factory UBI checked, FIT %lu bytes, %u reserved LEBs\n", total, reserved);
+	return RET_SUCCESS;
+}
+#endif
+
 static int failsafe_validate_firmware(const void *data_addr, ulong data_size)
 {
     int ret = RET_SUCCESS;
@@ -551,7 +682,7 @@ static int failsafe_validate_firmware(const void *data_addr, ulong data_size)
                     "rootfs", LYW_UBI_SIZE);
             return RET_FILE_TOO_BIG;
         }
-        return RET_SUCCESS;
+        return lyw_validate_factory(data_addr, data_size);
 #else
         ret = validate_file_size("firmware", "rootfs", data_size);
 #endif
@@ -684,6 +815,12 @@ static int failsafe_validate_initramfs(const void *data_addr, ulong data_size)
 
 static int failsafe_write_firmware(ulong data_addr, ulong data_size)
 {
+#ifdef CONFIG_TARGET_IPQ5018_LYW_30M
+	/* Recheck at the destructive boundary as well as during upload. */
+	int ret = failsafe_validate_firmware((const void *)data_addr, data_size);
+	if (ret)
+		return ret;
+#endif
 	print_upgrade_hint("FIRMWARE");
 
 	switch (fw_type) {
@@ -727,6 +864,14 @@ static int failsafe_write_firmware(ulong data_addr, ulong data_size)
 			CONFIG_NAND_FLASH_INFO_IDX, LYW_UBI_OFFSET, LYW_UBI_SIZE,
 			data_addr, LYW_UBI_OFFSET,
 			get_nand_writable_data_size(data_size));
+		/* A stock APPSBLENV does not contain the single-UBI variables.
+		 * Install the boot recipe only after the firmware write succeeds;
+		 * keep factory identity and calibration-related environment fields. */
+		ADD_CMD_TO_LIST("setenv lyw_mtd '%s'", LYW_MTD_COMMAND);
+		ADD_CMD_TO_LIST("setenv lyw_args '%s'", LYW_ARGS_COMMAND);
+		ADD_CMD_TO_LIST("setenv lyw_boot '%s'", LYW_BOOT_COMMAND);
+		ADD_CMD_TO_LIST("setenv bootcmd 'run lyw_boot'");
+		ADD_CMD_TO_LIST("saveenv");
 #else
 		ADD_CMD_TO_LIST("flash rootfs 0x%lx 0x%lx", data_addr, data_size);
 #endif
