@@ -2,6 +2,8 @@
 
 # uBootKit - Qualcomm IPQ Platform U-Boot
 
+**LYW-30M 专用分支：[来源、构建、镜像格式和实测边界](README.LYW-30M.md)。本机状态以该说明为准。**
+
 ## 项目简介
 
 - 支持通过 DHCP 为客户端分配 IP，无需手动固定 IP。

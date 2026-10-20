@@ -33,6 +33,7 @@ on:
           - jdcloud_re-cs-08
           - jdcloud_re-ss-01
           - link_nn6000
+          - lyw_30m
           - oceanblue_s200-h
           - oppo_ckb01
           - philips_ly1800
