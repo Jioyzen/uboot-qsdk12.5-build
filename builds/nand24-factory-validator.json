@@ -1,0 +1,74 @@
+[
+  {
+    "case": "valid-http-256M",
+    "address": "0x410000c0",
+    "expected_returncode": 0,
+    "returncode": 0,
+    "output": "LYW-30M: factory UBI checked, FIT 3948360 bytes, 114 reserved LEBs",
+    "passed": true
+  },
+  {
+    "case": "valid-tftp-style-address",
+    "address": "0x44000000",
+    "expected_returncode": 0,
+    "returncode": 0,
+    "output": "LYW-30M: factory UBI checked, FIT 3948360 bytes, 114 reserved LEBs",
+    "passed": true
+  },
+  {
+    "case": "EC-CRC-corruption",
+    "address": "0x410000c0",
+    "expected_returncode": 1,
+    "returncode": 1,
+    "output": "REJECT: EC/VID geometry or CRC",
+    "passed": true
+  },
+  {
+    "case": "VID-CRC-corruption",
+    "address": "0x410000c0",
+    "expected_returncode": 1,
+    "returncode": 1,
+    "output": "REJECT: EC/VID geometry or CRC",
+    "passed": true
+  },
+  {
+    "case": "volume-table-CRC-corruption",
+    "address": "0x410000c0",
+    "expected_returncode": 1,
+    "returncode": 1,
+    "output": "REJECT: inconsistent volume tables",
+    "passed": true
+  },
+  {
+    "case": "wrong-board-DTB",
+    "address": "0x410000c0",
+    "expected_returncode": 1,
+    "returncode": 1,
+    "output": "REJECT: device tree is not LYW-30M",
+    "passed": true
+  },
+  {
+    "case": "missing-NAND-profile",
+    "address": "0x410000c0",
+    "expected_returncode": 1,
+    "returncode": 1,
+    "output": "REJECT: not the single-system NAND profile",
+    "passed": true
+  },
+  {
+    "case": "truncated-image",
+    "address": "0x410000c0",
+    "expected_returncode": 1,
+    "returncode": 1,
+    "output": "REJECT: unaligned or truncated image",
+    "passed": true
+  },
+  {
+    "case": "missing-kernel-LEB",
+    "address": "0x410000c0",
+    "expected_returncode": 1,
+    "returncode": 1,
+    "output": "REJECT: missing kernel LEB",
+    "passed": true
+  }
+]

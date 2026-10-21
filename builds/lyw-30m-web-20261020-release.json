@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-20",
+  "board": "LYW-30M AX3000_Q06_V2.0_0223",
+  "source_equivalent_commit": "d7daf9fc276b0f910b65ccff168fa3c64dbe7363",
+  "binary_built_before_commit": true,
+  "binary_git_description": "f687f0a-dirty",
+  "binary_build_version": "U-Boot 2016.01-f687f0a-dirty (2026-10-20 18:57:10 +0800)",
+  "artifact": {
+    "name": "uboot-ipq50xx-lyw_30m-261020_185707_f687f0a-dirty.bin",
+    "bytes": 655360,
+    "sha256": "5e37b3faa67c816971b2f60400ef0849b3a59f8893e743b87eecfcb6bd071643"
+  },
+  "source_files_sha256": {
+    "u-boot-2016/board/qca/arm/common/failsafe.c": "22c5343057018a7ee6f4356a0e9ea2cc4e170f89030a054dea6de5d4e32d300b",
+    "u-boot-2016/include/configs/ipq5018.h": "4e3db6c133b840b55f29c8d7fdf0fa17c41078f6014a6df14dc63a23c94880a7"
+  },
+  "validation": {
+    "host_validator_cases_passed": 9,
+    "real_HTTP_invalid_CRC_rejected": true,
+    "real_HTTP_wrong_board_rejected": true,
+    "factory_Web_write_and_NAND_boot": true,
+    "stock_Web_SSH_unlock": true,
+    "stock_SSH_install_primary_UBoot": true,
+    "primary_full_readback_verified": true,
+    "protected13_unchanged_after_Web_firmware_write": true,
+    "environment_CRC_valid": true,
+    "environment_changed_keys": [
+      "bootcmd",
+      "lyw_mtd",
+      "lyw_args",
+      "lyw_boot"
+    ],
+    "factory_identity_environment_fields_preserved": true,
+    "NAND_ECC_failures": 0,
+    "NAND_bad_blocks": 0,
+    "user_confirmed_stable_runtime": true,
+    "physical_Reset_entry_independently_recorded": false,
+    "power_cycle_independently_recorded": false
+  },
+  "backup_APPSBL_1": {
+    "partition_present": true,
+    "content_all_ff": true,
+    "bootable_backup_present": false
+  },
+  "factory": {
+    "name": "lyw-nss618-nand23-defaults-squashfs-factory.ubi",
+    "bytes": 14286848,
+    "sha256": "66c1a308a1ed99ad901e1cb6e78606de4b76970164265da727ba76718687213b"
+  },
+  "release_date": "2026-10-21",
+  "release_assets": {
+    "lyw-30m-uboot-web-20261020-appsbl-0x140000.bin": {
+      "bytes": 1310720,
+      "sha256": "5080d91cb41dace19781053b72a1b0978cf97a77f397cbb3c56af2ccd1e85d87"
+    },
+    "lyw-30m-uboot-web-20261020.bin": {
+      "bytes": 655360,
+      "sha256": "5e37b3faa67c816971b2f60400ef0849b3a59f8893e743b87eecfcb6bd071643"
+    }
+  },
+  "NAND24_factory_host_validation": {
+    "nine_cases_passed": true,
+    "reader": "Unmodified U-Boot libfdt source, not host libfdt",
+    "physical_Web_flash_in_this_release": false
+  },
+  "current_device_primary_APPSBL_sha256": "5080d91cb41dace19781053b72a1b0978cf97a77f397cbb3c56af2ccd1e85d87",
+  "current_device_primary_APPSBL_matches_padded_release": true
+}

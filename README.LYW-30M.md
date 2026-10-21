@@ -2,11 +2,20 @@
 
 系统源码独立维护于 [Jioyzen/openwrt-nss-edma](https://github.com/Jioyzen/openwrt-nss-edma/tree/lyw-30m-nss125-validation)。本仓库只维护引导程序。
 
+## 发布下载（2026-10-21）
+
+[下载LYW-30M专用不死U-Boot](https://github.com/Jioyzen/uboot-qsdk12.5-build/releases/tag/lyw-30m-web-20261020)；[完整原厂到OpenWrt教程](https://github.com/Jioyzen/openwrt-nss-edma/blob/lyw-30m-nss125-validation/README.md)。
+
+- `lyw-30m-uboot-web-20261020.bin`：已实测640KiB原始镜像，已有专用Web时在“U-Boot更新”使用。
+- `lyw-30m-uboot-web-20261020-appsbl-0x140000.bin`：前者以0xff补齐为1.25MiB，仅用于已核对原厂主APPSBL的SSH安装。整分区SHA256与当前设备一致。
+- 不要将任一U-Boot文件上传到“固件更新”；该入口应上传OpenWrt的factory UBI。
+- 发布仍使用2026-10-20 18:57实测二进制，未因文档或主机测试工具更新重编引导程序。附件、原始名称及源码对应关系见 `builds/lyw-30m-web-20261020-release.json`。
+
 ## 当前实测状态（2026-10-20）
 
 已在本机跑通：干净原厂系统的隐藏Web管理页开启SSH → 原厂SSH写主APPSBL → 专用不死U-Boot恢复Web → 用户Web刷专用factory UBI → OpenWrt NAND23正常启动。此次SSH开启没有使用TTL；TTL用于恢复准备和被动记录。
 
-已验证运行镜像：`uboot-ipq50xx-lyw_30m-261020_185707_f687f0a-dirty.bin`，655360字节；启动版本 `U-Boot 2016.01-f687f0a-dirty (2026-10-20 18:57:10 +0800)`，SHA256 `5e37b3faa67c816971b2f60400ef0849b3a59f8893e743b87eecfcb6bd071643`。对应功能源码已整理为提交 `d7daf9fc276b0f910b65ccff168fa3c64dbe7363`，尚未推送；二进制在提交前构建，保留实际f687f0a-dirty版本字符串。源码文件校验值和实测清单见 `builds/lyw-30m-stock-web-20261020.json`。
+已验证运行镜像：`uboot-ipq50xx-lyw_30m-261020_185707_f687f0a-dirty.bin`，655360字节；启动版本 `U-Boot 2016.01-f687f0a-dirty (2026-10-20 18:57:10 +0800)`，SHA256 `5e37b3faa67c816971b2f60400ef0849b3a59f8893e743b87eecfcb6bd071643`。对应功能源码已整理为提交 `d7daf9fc276b0f910b65ccff168fa3c64dbe7363`，已推送；二进制在提交前构建，保留实际f687f0a-dirty版本字符串。源码文件校验值和实测清单见 `builds/lyw-30m-stock-web-20261020.json`。
 
 上游为 [chenxin527/uboot-qsdk12.5-build](https://github.com/chenxin527/uboot-qsdk12.5-build)，固定基线 `9ce315735ac88fd0a7c7697bc527a8616ed0a972`；本地维护分支 `lyw-30m-recovery`。源码包含构建脚本及完整 `u-boot-2016/`，不是只有下载器。
 
@@ -37,7 +46,7 @@
 python3 tests/lyw-factory-validator-host.py /path/to/lyw-factory.ubi
 ```
 
-需主机C编译器、zlib及libfdt.so.1，不访问路由器。当前9项用例覆盖256MiB HTTP真实地址、另一加载地址、EC/VID CRC、卷表、错误板型、缺少NAND标志、截断及缺失kernel LEB。
+需主机C编译器和zlib，不访问路由器。校验工具编译本仓库U-Boot自带的只读libfdt源码，避免主机新版libfdt因4/8字节对齐规则不同误拒绝有效的FIT内嵌DTB。NAND23和NAND24均通过9项回归；NAND24报告见 `builds/nand24-factory-validator.json`。这不是新增一次NAND24 Web实际刷写的证明。当前9项用例覆盖256MiB HTTP真实地址、另一加载地址、EC/VID CRC、卷表、错误板型、缺少NAND标志、截断及缺失kernel LEB。
 
 ## 支持的系统镜像
 

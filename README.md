@@ -2,7 +2,7 @@
 
 # uBootKit - Qualcomm IPQ Platform U-Boot
 
-**LYW-30M 专用分支：[来源、构建、镜像格式和实测边界](README.LYW-30M.md)。本机状态以该说明为准。**
+**LYW-30M 专用分支：[镜像下载与本机说明](README.LYW-30M.md) · [Releases](https://github.com/Jioyzen/uboot-qsdk12.5-build/releases/tag/lyw-30m-web-20261020) · [原厂免拆机刷 OpenWrt 教程](https://github.com/Jioyzen/openwrt-nss-edma/blob/lyw-30m-nss125-validation/README.md)。本机支持范围和实测状态以专用说明为准。**
 
 ## 项目简介
 

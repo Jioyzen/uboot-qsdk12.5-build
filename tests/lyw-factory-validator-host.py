@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise the actual LYW C validator with mapped 256MiB upload addresses.
-Requires a host C compiler, zlib and libfdt.so.1. Never accesses router/NAND.
+Requires a host C compiler and zlib. Uses U-Boot's own read-only libfdt,
+not the host library, whose alignment rules can differ. Never accesses NAND.
 """
 from pathlib import Path
 import argparse,json,subprocess,tempfile,struct,zlib
@@ -69,7 +70,33 @@ cases.append(('missing-kernel-LEB',x,'0x410000c0',1))
 results=[]
 with tempfile.TemporaryDirectory(prefix='lyw-factory-check-') as tmp:
  t=Path(tmp);c=t/'validator.c';c.write_text(shim+function+main);exe=t/'validator'
- subprocess.run(['cc','-std=gnu11','-O2',str(c),'-Wl,-l:libfdt.so.1','-lz','-o',str(exe)],check=True)
+ # Modern host libfdt rejects a valid FIT-embedded DTB at a 4-byte offset.
+ # The actual bootloader accepts it. Compile its unmodified reader sources
+ # and headers so this test exercises the deployed parser's rules.
+ for name in ('fdt.h', 'libfdt.h'):
+  (t/name).write_bytes((r/'u-boot-2016/include'/name).read_bytes())
+ (t/'libfdt_env.h').write_text('''
+#ifndef _LIBFDT_ENV_H
+#define _LIBFDT_ENV_H
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <endian.h>
+typedef uint16_t fdt16_t;
+typedef uint32_t fdt32_t;
+typedef uint64_t fdt64_t;
+#define fdt32_to_cpu(x) be32toh(x)
+#define cpu_to_fdt32(x) htobe32(x)
+#define fdt64_to_cpu(x) be64toh(x)
+#define cpu_to_fdt64(x) htobe64(x)
+#endif
+''')
+ reader=r/'u-boot-2016/lib/libfdt'
+ subprocess.run(['cc','-std=gnu11','-O2','-I',str(t),str(c),
+                 str(reader/'fdt.c'),str(reader/'fdt_ro.c'),
+                 '-lz','-o',str(exe)],check=True)
  for name,data,addr,expected in cases:
   f=t/'candidate.ubi';f.write_bytes(data);p=subprocess.run([str(exe),str(f),addr],capture_output=True,text=True)
   assert p.returncode==expected,(name,p.returncode,p.stdout,p.stderr)
